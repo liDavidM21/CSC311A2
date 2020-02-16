@@ -1,7 +1,9 @@
 from __future__ import print_function
 import matplotlib.pyplot as plt
+from scipy.misc import logsumexp
 import numpy as np
 from sklearn.datasets import load_boston
+from sklearn.model_selection import train_test_split
 np.random.seed(0)
 
 # load boston housing prices dataset
@@ -35,12 +37,23 @@ def LRLS(test_datum, x_train, y_train, tau, lam=1e-5):
     Input: test_datum is a dx1 test vector
            x_train is the N_train x d design matrix
            y_train is the N_train x 1 targets vector
-           tau is the local reweighting parameter
+           tau is the local reweighting parameter   
            lam is the regularization parameter
     output is y_hat the prediction on test_datum
     '''
-    
-    return None
+    N_train = x_train.shape[0]
+    norm_matrix = -l2(test_datum.transpose(), x_train)
+    a = []
+    s = logsumexp([norm_matrix[0]/(2*tau**2)])
+    for j in range(N_train):    
+        log = norm_matrix[0][j]/(2*tau**2) - s
+        a.append(np.exp(log))
+    a = np.array(a)
+    d = np.diag(a)
+    left = np.matmul(x_train.transpose(), np.matmul(d, x_train))
+    right = np.matmul(x_train.transpose(), np.matmul(d, y_train))
+    w = np.linalg.solve(left + 1e-8 * np.eye(left.shape[0]), right)
+    return np.dot(w, test_datum)
     ## TODO
 
 #helper function
@@ -55,6 +68,7 @@ def run_on_fold(x_test, y_test, x_train, y_train, taus):
     '''
     N_test = x_test.shape[0]
     losses = np.zeros(taus.shape)
+    counter = 0
     for j,tau in enumerate(taus):
         predictions =  np.array([LRLS(x_test[i,:].reshape(d,1),x_train,y_train, tau) \
                         for i in range(N_test)])
@@ -70,8 +84,9 @@ def run_k_fold(x, y, taus, k):
            K in the number of folds
     output is losses a vector of k-fold cross validation losses one for each tau value
     '''
-    ## TODO
-    return None
+    x_train, x_test, y_train, y_test = train_test_split(x,y, test_size = 0.3)
+    loss = run_on_fold(x_test, y_test, x_train, y_train, taus)
+    return loss
     ## TODO
 
 
