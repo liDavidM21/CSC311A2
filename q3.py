@@ -4,6 +4,7 @@ from scipy.misc import logsumexp
 import numpy as np
 from sklearn.datasets import load_boston
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
 np.random.seed(0)
 
 # load boston housing prices dataset
@@ -41,15 +42,10 @@ def LRLS(test_datum, x_train, y_train, tau, lam=1e-5):
            lam is the regularization parameter
     output is y_hat the prediction on test_datum
     '''
-    N_train = x_train.shape[0]
     norm_matrix = -l2(test_datum.transpose(), x_train)
-    a = []
-    s = logsumexp([norm_matrix[0]/(2*tau**2)])
-    for j in range(N_train):    
-        log = norm_matrix[0][j]/(2*tau**2) - s
-        a.append(np.exp(log))
-    a = np.array(a)
-    d = np.diag(a)
+    s = logsumexp(norm_matrix[0]/(2*tau**2))
+    log = np.exp(norm_matrix[0]/(2*tau**2) - s)
+    d = np.diag(log)
     left = np.matmul(x_train.transpose(), np.matmul(d, x_train))
     right = np.matmul(x_train.transpose(), np.matmul(d, y_train))
     w = np.linalg.solve(left + 1e-8 * np.eye(left.shape[0]), right)
@@ -70,6 +66,8 @@ def run_on_fold(x_test, y_test, x_train, y_train, taus):
     losses = np.zeros(taus.shape)
     counter = 0
     for j,tau in enumerate(taus):
+        print(counter)
+        counter += 1
         predictions =  np.array([LRLS(x_test[i,:].reshape(d,1),x_train,y_train, tau) \
                         for i in range(N_test)])
         losses[j] = ((predictions.flatten()-y_test.flatten())**2).mean()
@@ -84,9 +82,14 @@ def run_k_fold(x, y, taus, k):
            K in the number of folds
     output is losses a vector of k-fold cross validation losses one for each tau value
     '''
-    x_train, x_test, y_train, y_test = train_test_split(x,y, test_size = 0.3)
-    loss = run_on_fold(x_test, y_test, x_train, y_train, taus)
-    return loss
+    kf = KFold(n_splits=5)
+    losses = np.zeros(taus.shape[0])
+    for train_index, test_index in kf.split(x):
+        x_train, x_test = x[train_index], x[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+        losses += run_on_fold(x_test, y_test, x_train, y_train, taus)
+    losses /= 5
+    return losses
     ## TODO
 
 

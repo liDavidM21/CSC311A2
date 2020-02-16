@@ -48,7 +48,7 @@ def main():
     #TODO: Split data into train and test
     x_train, x_test, y_train, y_test = train_test_split(X,y, test_size = 0.3)
     # Fit regression model
-    w = fit_regression(X, y)
+    w = fit_regression(x_train, y_train)
     # Compute fitted values, MSE, etc.
     result_y = []
     for i in x_test:
